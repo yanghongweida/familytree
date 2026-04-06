@@ -1,6 +1,5 @@
 "use client";
-
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { FamilyData, Person } from '@/types/family';
 import { ChevronDownIcon, ChevronRightIcon, UserIcon, CalendarIcon } from '@heroicons/react/24/outline';
 import { highlightMatch } from '@/utils/search';
@@ -60,7 +59,6 @@ const TreeNode = ({ person, level, searchTerm, searchInInfo, firstMatchId }: Tre
     if (isFirstMatch && nodeRef.current) {
       // 清理之前的timeout
       clearAllTimeouts();
-
       const scrollTimeout = setTimeout(() => {
         if (nodeRef.current) {
           nodeRef.current.scrollIntoView({ 
@@ -80,7 +78,6 @@ const TreeNode = ({ person, level, searchTerm, searchInInfo, firstMatchId }: Tre
       
       timeoutRefs.current.push(scrollTimeout);
     }
-
     // cleanup函数 - 防止内存泄漏
     return () => {
       clearAllTimeouts();
@@ -143,9 +140,9 @@ const TreeNode = ({ person, level, searchTerm, searchInInfo, firstMatchId }: Tre
       
       {hasChildren && isExpanded && (
         <div className="border-l border-gray-200 ml-2 pl-2">
-          {person.children?.map((child, index) => (
+          {person.children?.map((child) => (
             <TreeNode 
-              key={index} 
+              key={child.id} 
               person={child} 
               level={level + 1} 
               searchTerm={searchTerm} 
@@ -178,8 +175,11 @@ const findAllMatches = (person: Person, searchTerm: string, searchInInfo: boolea
 
 export default function TreeView({ data, searchTerm, searchInInfo }: TreeViewProps) {
   const [firstMatchId, setFirstMatchId] = useState<string | null>(null);
-  // 找到第一代人物作为树的根节点
-  const rootPeople = data.generations[0]?.people || [];
+
+  // 核心修复：用useMemo包裹rootPeople，稳定引用，解决useEffect依赖警告
+  const rootPeople = useMemo(() => {
+    return data.generations[0]?.people || [];
+  }, [data]); // 仅当data变化时才重新计算
   
   // 找到第一个匹配项
   useEffect(() => {
@@ -204,9 +204,9 @@ export default function TreeView({ data, searchTerm, searchInInfo }: TreeViewPro
       <div className="bg-white rounded-lg shadow-sm p-6">
         <h2 className="text-xl font-bold text-gray-800 mb-6">家族树状图</h2>
         <div className="overflow-x-auto">
-          {rootPeople.map((person, index) => (
+          {rootPeople.map((person) => (
             <TreeNode 
-              key={index} 
+              key={person.id} 
               person={person} 
               level={0} 
               searchTerm={searchTerm} 
@@ -218,4 +218,4 @@ export default function TreeView({ data, searchTerm, searchInInfo }: TreeViewPro
       </div>
     </div>
   );
-} 
+}
